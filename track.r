@@ -326,22 +326,25 @@ tt.maxw <- sapply(tt,function(.df)max(.df$width))
 max(tt.maxw)
 which(tt.maxw==max(tt.maxw))
 
-tt.size <- sapply(tt,height)
-tt.decs <- sort(tt.size,decreasing=T)
+# size as height shows the number of segments
+tt.nsegs <- sapply(tt,height)
+tt.decs <- sort(tt.nsegs,decreasing=T)
 
-hist(tt.size,breaks=100)
+hist(tt.nsegs,breaks=100)
 
 tt.noot <- tt
 tt.noot[["35 88"]] <- NULL
 tt.noot[["57 86"]] <- NULL
 tt.noot[["16 37"]] <- NULL
-tt.noot.size <- sapply(tt.noot,height)
-hist(tt.noot.size,breaks=1:50)
-tt.noot.decs <- sort(tt.noot.size,decreasing=T)
+tt.noot.nsegs <- sapply(tt.noot,height)
+hist(tt.noot.nsegs,breaks=1:50)
+tt.noot.decs <- sort(tt.noot.nsegs,decreasing=T)
 head(tt.noot.decs,10)
 tail(tt.noot.decs,10)
-tt.size.rle <- rle(sort(tt.size))
-tt.size.rle
+tt.nsegs.rle <- rle(sort(tt.nsegs))
+tt.nsegs.rle
+
+tt.avlen <- sapply(tt.noot,function(.df)mean(.df$width))
 
 ##### ----- verification of RLE method 
 ##### with direct dataframe-filtering
@@ -457,3 +460,15 @@ qd.rows <- rownames(dq[["10 21"]][114:116,])
 #[1] "38969" "38971" "38972"
 qd[qd.rows,] # times!
 d[as.character(unique(qd[qd.rows,]$row.p)),] # cells!
+
+##### analysis of the average trajectory co-travel
+tt.avlen <- sapply(tt.noot,function(.df)mean(.df$width))
+tt.avlen.decr <- sort(tt.avlen,decr=T)
+plot(tt.avlen.decr)
+# we can see an outlier dominating
+tt.avlen.decr[1:10]
+tt.avlen.decr[1:10]
+# 24 26 16 18 35 51 51 88  6 15  9 78 34 69 47 82 50 73 22 35 
+# 18.40  4.00  4.00  4.00  4.00  4.00  3.50  3.50  3.50  3.36 
+tt[["24 26"]]
+plot(tail(tt.avlen.decr,-1))
