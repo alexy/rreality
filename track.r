@@ -1,6 +1,7 @@
 load("callspan-v.rda")
 vt <- with(v,v[order(starttime,cell,person),])
 vt.s <- as.integer(vt$start)
+
 sum(vt.s!=sort(vt.s)) # check vt is really sorted by starttime
 d <- subset(vt,select=c(starttime,cell,person))
 names(d)[1] <- "start"
@@ -214,6 +215,8 @@ diff.ts <- function(ts) {
 
 do.track.df <- function(.df) {
   dt     <- .df$t.p-.df$t.q
+  # those give use delta for the 1st cell in a trajectory,
+  # not the last -- which we really want; we need 
   dt.p   <- diff.ts(.df$t.p)
   dt.q   <- diff.ts(.df$t.q)
   dseq.p <- diff.ts(.df$seq.p)
@@ -425,6 +428,9 @@ sum(df.null.len) # this must be 0 if things are right!
     #    600000            
     #     12289 1097617320 
 
+    # BTW: qd rownames are just 1:height(qd), as it's hand-made;
+    # thus qd["x",] === qd[x,]
+    
 # NB: in order to fix this properly, we need rows in qh to be integers,
 # so they work in as.character in pseq; or format there;
 # in order for the rows in qh to be as.integer, we've changed peers2
@@ -472,3 +478,65 @@ tt.avlen.decr[1:10]
 # 18.40  4.00  4.00  4.00  4.00  4.00  3.50  3.50  3.50  3.36 
 tt[["24 26"]]
 plot(tail(tt.avlen.decr,-1))
+
+# NB next: with ff, we have access to timings easily
+# let's see what the average step size and total duration
+# of a trajectory are, and measure the gaps between segments
+# -- to glue likely candidates
+# -- timings can help checking where seq jumps are small
+# NB single co-occurrences are different from trajectories!
+
+# the contents of vt$starttime is class POSIXct
+# but making it back via as.POSIXct doesn't work regardless of tz
+# so we use as.POSIXlt without a tz below:
+time.of.int <- function(it) as.POSIXlt(it,origin="1970-01-01")
+
+# this operates on a list element, ff[i]
+ff.timings <- function(ldf) {
+  pair <- names(ldf)
+  meat <- ldf[[1]]
+  mydf <- df[[pair]]
+  # might record both p's and q's, but now doing p's only:
+  meat <- cbind(meat,st.int=NA,et.int=NA,dt1.p=NA,dt1.q=NA,gap=NA)
+  for (j in 1:height(meat)) {
+    row.start <- which(mydf$pos==meat$start[j])
+    # row.end <- which(mydf$pos==meat$end[j])
+    row.end <- row.start + meat$width[j] - 1 # faster
+    meat$st.int[j] <- as.integer(mydf$t.p[row.start])
+    meat$et.int[j] <- as.integer(mydf$t.p[row.end])
+    meat$dt1.p[j] <- mydf$dt.p[row.start]
+    meat$dt1.q[j] <- mydf$dt.q[row.start]
+    if (j>1) meat$gap[j] <- meat$st.int[j]-meat$et.int[j-1]
+  }
+  meat
+}
+
+ft <- lapply(1:length(ff),function(i)ff.timings(ff[i]))
+names(ft) <- names(ff)
+ft <- lapply(ft,function(.df)cbind(.df,st=time.of.int(.df$st.int),et=time.of.int(.df$et.int)))
+# dt=difftime(.df$et,.df$st,units="mins") -- trying to do difftime wants origin again?!
+ft <- lapply(ft,function(.df)cbind(.df,dt=.df$et.int-.df$st.int)) 
+
+ft.nseg <- sapply(ft,height)
+names(ft.nseg) <- names(ft)
+ft.nseg.za <- sort(ft.nseg,decr=T)
+ft.nseg.za[1:10]
+
+ft.av.hops <- sapply(ft,function(.df)mean(.df$end-.df$start))
+names(ft.av.hops) <- names(ft)
+ft.av.hops.za <- sort(ft.av.hops,decr=T)
+ft.av.hops.za[1:10]
+
+ft.av.dt <- sapply(ft,function(.df)mean(.df$dt))
+names(ft.av.dt) <- names(ft)
+ft.av.dt.za <- sort(ft.av.dt,decr=T)
+ft.av.dt.za[1:10]
+
+ft.max.dt <- sapply(ft,function(.df)max(.df$dt))
+names(ft.max.dt) <- names(ft)
+ft.max.dt.za <- sort(ft.max.dt,decr=T)
+ft.max.dt.za[1:10]
+
+ft.dt <- data.frame(max.dt=ft.max.dt,av.dt=ft.av.dt,nseg=ft.nseg,av.hops=ft.av.hops)
+ft.dt <- with(ft.dt,ft.dt[order(-max.dt,-nseg),])
+ft.dt[1:40,]
