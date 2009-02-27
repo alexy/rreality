@@ -540,3 +540,6 @@ ft.max.dt.za[1:10]
 ft.dt <- data.frame(max.dt=ft.max.dt,av.dt=ft.av.dt,nseg=ft.nseg,av.hops=ft.av.hops)
 ft.dt <- with(ft.dt,ft.dt[order(-max.dt,-nseg),])
 ft.dt[1:40,]
+ft.dt[order(-ft.dt$max.dt),][1:40,]
+
+# next: groups of 3 and more; start-through-end cells
